@@ -1,0 +1,51 @@
+name: build
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+
+jobs:
+  plugin_matrix:
+    strategy:
+      matrix:
+        include:
+        #   - os: ubuntu-latest
+        #     artifact-suffix: linux-x86-64
+          - os: macos-latest
+            artifact-suffix: macos-arm64
+            brew-dependencies: faust
+          - os: macos-15-intel
+            artifact-suffix: macos-x86-64
+            brew-dependencies: faust
+        #   - os: windows-2022
+        #     artifact-suffix: win-x86-64
+    runs-on: ${{ matrix.os }}
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: recursive
+    - name: Checkout SuperCollider
+      uses: actions/checkout@v4
+      with:
+        repository: "supercollider/supercollider"
+        ref: "main"
+        path: "supercollider"
+    - name: Install brew dependencies
+      if: ${{ matrix.brew-dependencies }}
+      run: brew install ${{ matrix.brew-dependencies }}
+    - name: Build Plugin
+      shell: bash
+      run: |
+        cmake \
+            -S . \
+            -B build \
+            -DSC_PATH=./supercollider \
+            -DCMAKE_INSTALL_PREFIX=./install
+        cmake --build build --config Release
+        cmake --install build --config Release
+    - name: upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: sc_faust-${{  matrix.artifact-suffix }}
+        path: install/
