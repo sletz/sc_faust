@@ -14,9 +14,9 @@ error "FAUST_LIBRARY_PATH must be defined by CMake"
 extern Library::CodeLibrary* gLibrary;
 
 ScFaust::ScFaust() {
-    auto hash = static_cast<int>(in0(0));
-    mNumInputs = static_cast<int>(in0(1));
-    mNumParams = static_cast<int>(in0(2));
+    auto hash = static_cast<int>(in0(indices::hash));
+    mNumInputs = static_cast<int>(in0(indices::numInputs));
+    mNumParams = static_cast<int>(in0(indices::numParams));
 
     set_calc_function<ScFaust, &ScFaust::next>();
 
@@ -41,11 +41,11 @@ ScFaust::~ScFaust() {
 void ScFaust::next(int numSamples) {
     if (mDsp != nullptr) {
         for (int i = 0; i < mNumParams; i++) {
-            auto paramOffset = **(mInBuf + 3 + mNumInputs + (i * 2));
+            auto paramOffset = **(mInBuf + indices::inputs + mNumInputs + (i * 2));
             auto param = mScRtUi->getParam(paramOffset);
-            *param = **(mInBuf + 3 + mNumInputs + (i * 2) + 1);
+            *param = **(mInBuf + indices::inputs + mNumInputs + (i * 2) + 1);
         };
-        mDsp->compute(numSamples, mInBuf + 3, mOutBuf);
+        mDsp->compute(numSamples, mInBuf + indices::inputs, mOutBuf);
     }
 }
 

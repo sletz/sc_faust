@@ -17,6 +17,12 @@ public:
     ~ScFaust();
 
 private:
+    enum indices {
+        hash = 0,
+        numInputs = 1,
+        numParams = 2,
+        inputs = 3,
+    };
     void next(int numSamples);
 
     llvm_dsp* mDsp = nullptr;

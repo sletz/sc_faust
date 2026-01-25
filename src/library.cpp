@@ -9,19 +9,19 @@ using namespace Library;
 CodeLibrary* gLibrary = nullptr;
 
 /*! @brief writes params to file, separated by $ */
-bool writeParamsToFile(const std::vector<std::string>& params, const std::string& filename) {
+bool writeParamsToFile(const std::vector<ParamPair>& params, const std::string& filename) {
     std::ofstream outFile(filename);
 
     if (!outFile) {
-        std::cerr << "Error opening file " << filename << std::endl;
+        Print("Error opening file %s\n", filename.c_str());
         return false;
     }
 
-    for (auto param : params) {
+    for (const auto& [param, _] : params) {
         outFile << param << "$";
     }
     outFile.close();
-    std::cout << "Writing to file " << filename << std::endl;
+    // Print("Writing to file %s\n", filename.c_str());
     return true;
 }
 
@@ -36,25 +36,18 @@ bool compileScript(World*, void* cmdData) {
 
     if (!errorMessage.empty()) {
         Print("ERROR: %s\n", errorMessage.c_str());
-        // we delete the factory here b/c it is faulty
-        delete payload->factory;
         // do not continue to stage 3
-        return false;
+        return true;
     }
-    Print("Compiled %d successfully\n", payload->hash);
+    // Print("Compiled %d successfully\n", payload->hash);
 
     // create an instance so we can obtain the parameters
     payload->dspInstance = payload->factory->createDSPInstance();
     payload->scUi = new SCUI();
     payload->dspInstance->buildUserInterface(payload->scUi);
 
-    Print("Faust script has %d params\n", payload->scUi->getNumParams());
-    auto params = payload->scUi->getParams();
-    std::vector<std::string> paramNames { params.size() };
-    for (const auto& [name, zone] : params) {
-        paramNames.emplace_back(name);
-    }
-    writeParamsToFile(paramNames, payload->paramExchangePath);
+    // Print("Faust script has %d params\n", payload->scUi->getNumParams());
+    writeParamsToFile(payload->scUi->getParams(), payload->paramExchangePath);
 
     return true;
 };
@@ -62,6 +55,11 @@ bool compileScript(World*, void* cmdData) {
 /*! @brief runs in stage 3 (RT). Insert the factory into our library */
 bool swapCode(World* world, void* cmdData) {
     auto payload = static_cast<Library::CompileCodeCallbackPayload*>(cmdData);
+
+    // in case stage 2 failed we do not swap
+    if (payload->factory == nullptr) {
+        return true;
+    }
 
     auto* newNode = static_cast<Library::CodeLibrary*>(RTAlloc(world, sizeof(CodeLibrary)));
     if (!newNode) {
@@ -84,6 +82,12 @@ void faustCompileScript(World* world, void*, sc_msg_iter* args, void* replyAddr)
         Print("ERROR: Failed to allocate memory for compile code callback.\n");
         return;
     }
+    // init payload such that we do nat have dangling pointers
+    payload->dspInstance = nullptr;
+    payload->factory = nullptr;
+    payload->scUi = nullptr;
+    payload->code = nullptr;
+    payload->paramExchangePath = nullptr;
     payload->hash = args->geti();
 
     const char* exchangePath = args->gets();

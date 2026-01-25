@@ -39,7 +39,7 @@ FaustDef {
 					// convert to symbol for lookup
 					res.params = params.collect({|p| p.asSymbol});
 
-					"Set faust params for %".format(res).postln;
+					//"Set faust params for %".format(res).postln;
 					File.delete(paramPath);
 				});
 			});
