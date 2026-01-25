@@ -13,12 +13,12 @@ error "FAUST_LIBRARY_PATH must be defined by CMake"
 
 extern Library::CodeLibrary* gLibrary;
 
-FaustGen::FaustGen() {
+ScFaust::ScFaust() {
     auto hash = static_cast<int>(in0(0));
     mNumInputs = static_cast<int>(in0(1));
     mNumParams = static_cast<int>(in0(2));
 
-    set_calc_function<FaustGen, &FaustGen::next>();
+    set_calc_function<ScFaust, &ScFaust::next>();
 
     auto node = Library::findEntry(hash);
     if (node == nullptr) {
@@ -32,13 +32,13 @@ FaustGen::FaustGen() {
     mDsp->buildUserInterface(mScRtUi);
 }
 
-FaustGen::~FaustGen() {
+ScFaust::~ScFaust() {
     delete mScRtUi;
     delete mDsp;
 }
 
 
-void FaustGen::next(int numSamples) {
+void ScFaust::next(int numSamples) {
     if (mDsp != nullptr) {
         for (int i = 0; i < mNumParams; i++) {
             auto paramOffset = **(mInBuf + 3 + mNumInputs + (i * 2));
@@ -49,10 +49,10 @@ void FaustGen::next(int numSamples) {
     }
 }
 
-PluginLoad("FaustGen") {
+PluginLoad("ScFaust") {
     ft = inTable;
 
-    registerUnit<FaustGen>(inTable, "FaustGen", false);
+    registerUnit<ScFaust>(inTable, "Faust", false);
 
-    ft->fDefinePlugInCmd("faustgenscript", Library::faustGenCompileScript, nullptr);
+    ft->fDefinePlugInCmd("faustscript", Library::faustCompileScript, nullptr);
 }

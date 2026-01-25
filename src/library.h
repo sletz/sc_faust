@@ -34,7 +34,7 @@ struct CompileCodeCallbackPayload {
 };
 
 /*! @brief takes an OSC message and compiles triggers an async compilation of the faust code */
-void faustGenCompileScript(World* world, void* inUserData, sc_msg_iter* args, void* replyAddr);
+void faustCompileScript(World* world, void* inUserData, sc_msg_iter* args, void* replyAddr);
 
 /*! @brief looks up the entry within the global code library. If the entry does not exist,
  *  it will return a nullptr.

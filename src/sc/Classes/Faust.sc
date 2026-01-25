@@ -1,4 +1,4 @@
-FaustGenDef {
+FaustDef {
 	classvar <all;
 	var <name;
 	var <hash;
@@ -28,10 +28,10 @@ FaustGenDef {
 		recvFunc = {|msg, time, replyAddr, recvPort|
 			if(msg.size == 2, {
 				var doneMsg = msg[1].asString;
-				if(doneMsg.beginsWith("faustgen"), {
-					var hash = doneMsg.replace("faustgen", "").asInteger;
-					var res = FaustGenDef.prHashMap[hash];
-					var paramPath = FaustGenDef.prParamPath(hash);
+				if(doneMsg.beginsWith("faust"), {
+					var hash = doneMsg.replace("faust", "").asInteger;
+					var res = FaustDef.prHashMap[hash];
+					var paramPath = FaustDef.prParamPath(hash);
 					var paramString = File.readAllString(paramPath);
 					var params = paramString.split($$);
 					// remove last empty param
@@ -59,10 +59,10 @@ FaustGenDef {
 			});
 			^res;
 		});
-		hash = FaustGenDef.prHashSymbol(name);
+		hash = FaustDef.prHashSymbol(name);
 		res = super.newCopyArgs(name, hash, code ? "");
 		all[name] = res;
-		FaustGenDef.prHashMap[hash] = res;
+		FaustDef.prHashMap[hash] = res;
 		^res;
 	}
 
@@ -79,15 +79,15 @@ FaustGenDef {
 		var servers = (server ?? { Server.allBootedServers }).asArray;
 		servers.do { |each|
 			if(each.hasBooted.not) {
-				"Server % not running, could not send FaustGenDef.".format(server.name).warn
+				"Server % not running, could not send FaustDef.".format(server.name).warn
 			};
 			this.prSendScript(each, completionMsg);
 		}
 	}
 
 	prSendScript {|server, completionMsg|
-		var tempPath = FaustGenDef.prParamPath(hash);
-		var message = [\cmd, \faustgenscript, hash, tempPath, code, completionMsg].asRawOSC;
+		var tempPath = FaustDef.prParamPath(hash);
+		var message = [\cmd, \faustscript, hash, tempPath, code, completionMsg].asRawOSC;
 		if(message.size < (65535 div: 4), {
 			server.sendRaw(message);
 		}, {
@@ -100,7 +100,7 @@ FaustGenDef {
 		counter = counter + 1;
 
 		if (server.isLocal.not, {
-			"FaustGenDef % could not be added  to server % because it is too big for sending via OSC and server is not local".format(
+			"FaustDef % could not be added  to server % because it is too big for sending via OSC and server is not local".format(
 				name,
 				server,
 			).warn;
@@ -111,31 +111,36 @@ FaustGenDef {
 			f.write(code);
 		});
 
-		server.sendMsg(\cmd, \faustgenfile, hash, tmpFilePath, completionMsg);
+		server.sendMsg(\cmd, \faustfile, hash, tmpFilePath, completionMsg);
 
 		fork {
 			var deleteSuccess;
 			server.sync;
 			deleteSuccess = File.delete(tmpFilePath);
 			if (deleteSuccess.not, {
-				"Could not delete temp file % of FaustGenDef %".format(tmpFilePath, name).warn;
+				"Could not delete temp file % of FaustDef %".format(tmpFilePath, name).warn;
 			});
 		}
 	}
 
-	// converts a list of [p1k, p1v, p2k, p2v] to
-	// a list of [p1pos, p1v, p2pos, p2v]
-	prParamMap {|inputs|
-		var map = [];
-		inputs.pairsDo({|k, v|
-			var pos = params.indexOf(k);
-			if(pos.notNil, {
-				map = map.add(pos).add(v);
+	// takes an array of [\paramName, signal] which should be
+	// transformed to its numerical representation of the `prParameters`
+	// array. Non existing parameters will be thrown away,
+	// also only the first occurence of a parameter will be considered
+	prTranslateParameters {|parameters|
+		var newParameters = [];
+		parameters.pairsDo({|param, value|
+			var index = params.indexOf(param.asSymbol);
+			if(index.notNil, {
+				newParameters = newParameters.add(index).add(value);
 			}, {
-				"Could not find param % for %".format(k, this.name).warn;
+				"Parameter % is not registered in % - will be ignored".format(
+					param,
+					name,
+				).warn;
 			});
 		});
-		^map.postln;
+		^newParameters;
 	}
 
 	*prHashSymbol {|symbol|
@@ -146,41 +151,84 @@ FaustGenDef {
 	}
 
 	*prParamPath {|hash|
-		^Platform.defaultTempDir +/+ "faustgen%".format(hash);
+		^Platform.defaultTempDir +/+ "faust%".format(hash);
 	}
 }
 
 
-FaustGen : MultiOutUGen {
-	*ar {|numOutputs, script, inputs, parameters|
-		var parameterMap;
-		var combinedInputs;
+Faust : MultiOutUGen {
+	*ar {|numOutputs, script, inputs, params|
+		var signals;
 
 		script = case
-		{script.isKindOf(FaustGenDef)} {script}
-		{script.isKindOf(String)} {FaustGenDef.all[script.asSymbol]}
-		{script.isKindOf(Symbol)} {FaustGenDef.all[script.asSymbol]}
-		{Error("Script input needs to be a FaustGenDef object or a symbol, found %".format(script.class)).throw};
+		{script.isKindOf(FaustDef)} {script}
+		{script.isKindOf(String)} {FaustDef.all[script.asSymbol]}
+		{script.isKindOf(Symbol)} {FaustDef.all[script.asSymbol]}
+		{Error("Script input needs to be a FaustDef object or a symbol, found %".format(script.class)).throw};
 		if(script.isNil, {
 			Error("Could not find script").throw;
 		});
 
-		parameterMap = script.prParamMap(parameters);
+		inputs = inputs.asArray;
+		params = params.asArray;
 
-		combinedInputs = inputs ++ parameterMap;
+		if(params.size.odd, {
+			Error("Parameters need to be key-value pairs, but found an odd number of elements").throw;
+		});
 
-		^this.multiNew('audio', numOutputs, FaustGenDef.prHashSymbol(script.name).asFloat, inputs.size, parameterMap.size/2, *combinedInputs);
+		signals = inputs ++ params;
+
+		^this.multiNew(
+			'audio',
+			numOutputs,
+			script,
+			inputs.size,
+			params.size/2, // parameters are tuples of [id, value]
+			*signals,
+		);
 	}
 
-	init { |numOutputs ... theInputs|
-		inputs = theInputs;
-		inputs = inputs.asArray.collect({|input|
-			if(input.rate != \audio, {
-				K2A.ar(input);
-			}, {
-				input;
+	init { |numOutputs, script, numInputs, numParams ... signals|
+		var params = signals[numInputs..];
+		var audioInputs = signals[..(numInputs-1)];
+
+		params.pairsDo({|key, value|
+			if(key.isKindOf(String).or(key.isKindOf(Symbol)).not, {
+				Error("'%' is not a valid parameter key".format(key)).throw;
+			});
+			if(value.isValidUGenInput.not, {
+				Error("Parameter '%' has invalid value '%'".format(key, value)).throw;
 			});
 		});
-		^this.initOutputs(numOutputs, 'audio');
+
+		params = script.prTranslateParameters(params);
+		// update the parameter count because parameters might have been ignored!
+		numParams = params.size.div(2);
+
+		// signals must be audio rate
+		signals = audioInputs.collect({|sig|
+			if(sig.rate != \audio, {
+				K2A.ar(sig);
+			}, {
+				sig;
+			});
+		});
+
+		params.pairsDo({|index, value|
+			// parameter values must be audio rate,
+			if(value.rate != \audio, {
+				value = K2A.ar(value);
+			});
+			signals = signals.add(index).add(value);
+		});
+
+		// inputs is a member variable of UGen
+		inputs = [
+			script.hash.asFloat,
+			numInputs,
+			numParams,
+		] ++ signals;
+
+		^this.initOutputs(numOutputs, \audio);
 	}
 }

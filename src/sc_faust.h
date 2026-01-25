@@ -6,15 +6,15 @@
 
 #include "sc_ui.h"
 
-class FaustGen;
+class ScFaust;
 
-/*! @class FaustGen
+/*! @class ScFaust
  *  @brief Unit generator for evaluating faust dsp
  */
-class FaustGen : public SCUnit {
+class ScFaust : public SCUnit {
 public:
-    FaustGen();
-    ~FaustGen();
+    ScFaust();
+    ~ScFaust();
 
 private:
     void next(int numSamples);

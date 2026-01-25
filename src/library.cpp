@@ -78,7 +78,7 @@ bool swapCode(World* world, void* cmdData) {
 };
 
 namespace Library {
-void faustGenCompileScript(World* world, void*, sc_msg_iter* args, void* replyAddr) {
+void faustCompileScript(World* world, void*, sc_msg_iter* args, void* replyAddr) {
     auto payload = static_cast<CompileCodeCallbackPayload*>(RTAlloc(world, sizeof(CompileCodeCallbackPayload)));
     if (!payload) {
         Print("ERROR: Failed to allocate memory for compile code callback.\n");
@@ -119,7 +119,7 @@ void faustGenCompileScript(World* world, void*, sc_msg_iter* args, void* replyAd
         RTFree(world, payload->paramExchangePath);
         RTFree(world, payload);
     }
-    snprintf(cmdName, 18, "faustgen%d", payload->hash);
+    snprintf(cmdName, 18, "faust%d", payload->hash);
 
     ft->fDoAsynchronousCommand(
         world, replyAddr,
