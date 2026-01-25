@@ -27,17 +27,25 @@ public:
     void openVerticalBox(const char* label) override {};
     void closeBox() override {};
     void addButton(const char* label, float* zone) override { params.emplace_back(label, zone); };
-    void addCheckButton(const char* label, float* zone) override {};
+    void addCheckButton(const char* label, float* zone) override { params.emplace_back(label, zone); };
     void addVerticalSlider(const char* label, float* zone, float init, float min, float max, float step) override {
         params.emplace_back(label, zone);
     };
     void addHorizontalSlider(const char* label, float* zone, float init, float min, float max, float step) override {
         params.emplace_back(label, zone);
     };
-    void addNumEntry(const char* label, float* zone, float init, float min, float max, float step) override {};
-    void addHorizontalBargraph(const char* label, float* zone, float min, float max) override {};
-    void addVerticalBargraph(const char* label, float* zone, float min, float max) override {};
-    void addSoundfile(const char* label, const char* filename, Soundfile** sf_zone) override {};
+    void addNumEntry(const char* label, float* zone, float init, float min, float max, float step) override {
+        params.emplace_back(label, zone);
+    };
+    void addHorizontalBargraph(const char* label, float* zone, float min, float max) override {
+        params.emplace_back(label, zone);
+    };
+    void addVerticalBargraph(const char* label, float* zone, float min, float max) override {
+        params.emplace_back(label, zone);
+    };
+    void addSoundfile(const char* label, const char* filename, Soundfile** sf_zone) override {
+        Print("ERROR: Soundfile input is currently not supported - skipping parameter %s\n", label);
+    };
 };
 
 /*! @class SCRTUI
@@ -66,15 +74,17 @@ public:
     void openVerticalBox(const char* label) override {};
     void closeBox() override {};
     void addButton(const char* label, float* zone) override { add(zone); };
-    void addCheckButton(const char* label, float* zone) override {};
+    void addCheckButton(const char* label, float* zone) override { add(zone); };
     void addVerticalSlider(const char* label, float* zone, float init, float min, float max, float step) override {
         add(zone);
     };
     void addHorizontalSlider(const char* label, float* zone, float init, float min, float max, float step) override {
         add(zone);
     };
-    void addNumEntry(const char* label, float* zone, float init, float min, float max, float step) override {};
-    void addHorizontalBargraph(const char* label, float* zone, float min, float max) override {};
-    void addVerticalBargraph(const char* label, float* zone, float min, float max) override {};
+    void addNumEntry(const char* label, float* zone, float init, float min, float max, float step) override {
+        add(zone);
+    };
+    void addHorizontalBargraph(const char* label, float* zone, float min, float max) override { add(zone); };
+    void addVerticalBargraph(const char* label, float* zone, float min, float max) override { add(zone); };
     void addSoundfile(const char* label, const char* filename, Soundfile** sf_zone) override {};
 };
