@@ -4,6 +4,7 @@
 		\testBasic,
 		\testNoScript,
 		\testParameter,
+		\testFaustLib,
 	],
 
 	testBasic: {
@@ -41,6 +42,24 @@
 			Faust.ar(1, \testParam, params: [\foo, DC.ar(pi)]);
 		}.loadToFloatArray(0.1, action: {|sig|
 			success = (sig[0]-pi).abs <= 0.01;
+			condition.unhang;
+		});
+		condition.hang;
+		success;
+	},
+
+	testFaustLib: {
+		var success = false;
+		var condition = Condition();
+		FaustDef(
+			\testLib,
+			"import(\"stdfaust.lib\"); process = os.triangle(300);"
+		).send;
+		s.sync;
+		{
+			Faust.ar(1, \testLib);
+		}.loadToFloatArray(0.1, action: {|sig|
+			success = sig[2] < 0.0;
 			condition.unhang;
 		});
 		condition.hang;
