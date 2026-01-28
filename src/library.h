@@ -33,6 +33,7 @@ struct CompileCodeCallbackPayload {
     llvm_dsp* dspInstance;
     SCUI* scUi;
     int numOutputs;
+    int numParams;
 };
 
 /*! @brief takes an OSC message and compiles triggers an async compilation of the faust code */
