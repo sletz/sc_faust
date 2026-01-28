@@ -27,6 +27,6 @@ private:
 
     llvm_dsp* mDsp = nullptr;
     SCRTUI* mScRtUi = nullptr;
-    int mNumInputs;
+    int mNumFaustInputs;
     int mNumParams;
 };

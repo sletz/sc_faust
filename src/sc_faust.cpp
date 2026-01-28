@@ -15,7 +15,7 @@ extern Library::CodeLibrary* gLibrary;
 
 ScFaust::ScFaust() {
     auto hash = static_cast<int>(in0(indices::hash));
-    mNumInputs = static_cast<int>(in0(indices::numInputs));
+    mNumFaustInputs = static_cast<int>(in0(indices::numInputs));
     mNumParams = static_cast<int>(in0(indices::numParams));
 
     set_calc_function<ScFaust, &ScFaust::next>();
@@ -34,15 +34,26 @@ ScFaust::ScFaust() {
         return;
     }
 
-    mScRtUi = static_cast<SCRTUI*>(RTAlloc(mWorld, sizeof(SCRTUI)));
-    mScRtUi->init(mWorld, node->numParams);
+    void* mScRtUiLocation = RTAlloc(mWorld, sizeof(SCRTUI));
+    if (mScRtUiLocation == nullptr) {
+        Print("ERROR: Could not allocate memory for SCRTUI UI location\n");
+        return;
+    }
+    mScRtUi = new (mScRtUiLocation) SCRTUI(mWorld, node->numParams);
+    if (!mScRtUi->mSuccess) {
+        Print("ERROR: Could not allocate memory for SCRTUI parameters\n");
+        return;
+    }
     mDsp = node->factory->createDSPInstance();
     mDsp->init(static_cast<int>(mWorld->mSampleRate));
     mDsp->buildUserInterface(mScRtUi);
 }
 
 ScFaust::~ScFaust() {
-    delete mScRtUi;
+    if (mScRtUi != nullptr) {
+        mScRtUi->~SCRTUI();
+    }
+    RTFree(mWorld, mScRtUi);
     delete mDsp;
 }
 
@@ -50,9 +61,9 @@ ScFaust::~ScFaust() {
 void ScFaust::next(int numSamples) {
     if (mDsp != nullptr) {
         for (int i = 0; i < mNumParams; i++) {
-            auto paramOffset = **(mInBuf + indices::inputs + mNumInputs + (i * 2));
+            auto paramOffset = **(mInBuf + indices::inputs + mNumFaustInputs + (i * 2));
             auto param = mScRtUi->getParam(paramOffset);
-            *param = **(mInBuf + indices::inputs + mNumInputs + (i * 2) + 1);
+            *param = **(mInBuf + indices::inputs + mNumFaustInputs + (i * 2) + 1);
         };
         mDsp->compute(numSamples, mInBuf + indices::inputs, mOutBuf);
     }
