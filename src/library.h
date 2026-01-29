@@ -7,11 +7,24 @@
 extern InterfaceTable* ft;
 
 namespace Library {
+
+/*! @brief a ref counter wrapper for llvm_dsp_factory */
+struct DSPFactory {
+    llvm_dsp_factory* factory = nullptr;
+    // indicates if this DSP fatory is ready to be deleted
+    bool shouldDelete = false;
+    // number of instances using the factory. only delete
+    // the dsp factory if this count is 0!
+    uint instanceCount = 0;
+};
+
 /*! @brief a linked list of available DSP factories */
 struct CodeLibrary {
     CodeLibrary* next;
     int hash;
-    llvm_dsp_factory* factory;
+    // this is wrapped as a pointer such that we can delete the code library
+    // while there are still units using the dsp factory.
+    DSPFactory* dspFactory;
     int numParams;
     int numOutputs;
 };
@@ -43,6 +56,16 @@ void faustCompileScript(World* world, void* inUserData, sc_msg_iter* args, void*
  *  This is NOT RT safe but this should not be expected to be set regularly and while the sounds run.
  */
 void setFaustLibPath(World* world, void* inUserData, sc_msg_iter* args, void* replyAddr);
+
+/*! @brief removes a faust factory from the server. This may be deferred
+ *  if there are still running instances. */
+void freeNodeCallback(World* world, void* inUserData, sc_msg_iter* args, void* replyAddr);
+
+/*! @brief remove all faust factories from the server by using `freeNodeCallback` */
+void freeAllCallback(World* world, void* inUserData, sc_msg_iter* args, void* replyAddr);
+
+/*! @brief deletes a DSP factory in the NRT thread. Call this only in RT context! */
+void deleteDspFactory(World* world, DSPFactory* factory);
 
 /*! @brief looks up the entry within the global code library. If the entry does not exist,
  *  it will return a nullptr.

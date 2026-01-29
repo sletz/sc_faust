@@ -85,18 +85,34 @@ bool swapCode(World* world, void* cmdData) {
         return true;
     }
 
-    auto* newNode = static_cast<Library::CodeLibrary*>(RTAlloc(world, sizeof(CodeLibrary)));
-    if (!newNode) {
-        Print("ERROR: RTAlloc failed to add item to the code library\n");
+    auto* dspFactory = static_cast<Library::DSPFactory*>(RTAlloc(world, sizeof(DSPFactory)));
+    if (!dspFactory) {
+        Print("ERROR: RTAlloc failed to create the dsp factory\n");
         return true;
     }
-    newNode->hash = payload->hash;
-    newNode->factory = payload->factory;
-    newNode->next = gLibrary;
-    newNode->numOutputs = payload->numOutputs;
-    newNode->numParams = payload->numParams;
+    dspFactory->factory = payload->factory;
+    dspFactory->instanceCount = 0;
+    dspFactory->shouldDelete = false;
 
-    gLibrary = newNode;
+    auto node = Library::findEntry(payload->hash);
+    if (node == nullptr) {
+        node = static_cast<Library::CodeLibrary*>(RTAlloc(world, sizeof(CodeLibrary)));
+        if (!node) {
+            Print("ERROR: RTAlloc failed to add item to the code library\n");
+            return true;
+        }
+        node->hash = payload->hash;
+    } else {
+        node->dspFactory->shouldDelete = true;
+        Library::deleteDspFactory(world, node->dspFactory);
+    }
+
+    node->dspFactory = dspFactory;
+    node->next = gLibrary;
+    node->numOutputs = payload->numOutputs;
+    node->numParams = payload->numParams;
+
+    gLibrary = node;
 
     return true;
 };
@@ -177,6 +193,72 @@ void setFaustLibPath(World*, void*, sc_msg_iter* args, void*) {
         return;
     }
     gFaustLibPath = libPath;
+}
+
+void freeNode(World* world, CodeLibrary* node) {
+    auto curNode = gLibrary;
+    CodeLibrary* prevNode = nullptr;
+
+    while (curNode != nullptr && curNode->hash != node->hash) {
+        prevNode = curNode;
+        curNode = curNode->next;
+    }
+    if (prevNode != nullptr) {
+        prevNode->next = node->next;
+    } else {
+        gLibrary = node->next;
+    }
+
+    if (node->dspFactory) {
+        node->dspFactory->shouldDelete = true;
+        if (node->dspFactory->instanceCount == 0) {
+            deleteDspFactory(world, node->dspFactory);
+        }
+    };
+    RTFree(world, node);
+}
+
+void freeNodeCallback(World* world, void* inUserData, sc_msg_iter* args, void* replyAddr) {
+    if (args->nextTag('f') != 'i') {
+        Print("Error: Invalid faust free message\n");
+        return;
+    }
+    const auto nodeId = args->geti();
+    const auto node = findEntry(nodeId);
+    if (node == nullptr) {
+        Print("Error: Could not free Faust script with ID %d: not found\n", nodeId);
+        return;
+    };
+    freeNode(world, node);
+}
+
+void freeAllCallback(World* world, void* inUserData, sc_msg_iter* args, void* replyAddr) {
+    auto node = gLibrary;
+    while (node != nullptr) {
+        freeNode(world, node);
+        node = node->next;
+    }
+    gLibrary = nullptr;
+}
+
+void deleteDspFactory(World* world, DSPFactory* factory) {
+    if (factory->instanceCount > 0) {
+        return;
+    }
+    ft->fDoAsynchronousCommand(
+        world, nullptr, nullptr, factory,
+        [](World*, void* cmdData) -> bool {
+            const auto factoryToDelete = static_cast<DSPFactory*>(cmdData);
+            if (!deleteDSPFactory(factoryToDelete->factory)) {
+                Print("ERROR: Failed to delete DSP factory\n");
+            }
+            return true;
+        },
+        [](World* world, void* cmdData) -> bool {
+            RTFree(world, cmdData);
+            return false;
+        },
+        nullptr, [](World*, void*) {}, 0, nullptr);
 }
 
 CodeLibrary* findEntry(const int hash) {
