@@ -99,13 +99,15 @@ if(APPLE)
 endif()
 
 # install
-install(TARGETS sc_faust LIBRARY DESTINATION ${PROJECT_NAME})
+set(INSTALL_DIR "${SC_INSTALL_DIR}/${PROJECT_NAME}")
+
+install(TARGETS sc_faust LIBRARY DESTINATION ${INSTALL_DIR})
 
 file(GLOB_RECURSE SC_FILES "${CMAKE_SOURCE_DIR}/src/sc/Classes/*.sc")
 file(GLOB_RECURSE SCHELP_FILES "${CMAKE_SOURCE_DIR}/src/sc/HelpSource/*/**")
-install(FILES ${SC_FILES} DESTINATION ${PROJECT_NAME}/Classes)
-install(DIRECTORY src/sc/HelpSource DESTINATION ${PROJECT_NAME})
-install(FILES ${DSPLIBS} DESTINATION ${PROJECT_NAME}/externals/faustlibs)
+install(FILES ${SC_FILES} DESTINATION ${INSTALL_DIR}/Classes)
+install(DIRECTORY src/sc/HelpSource DESTINATION ${INSTALL_DIR})
+install(FILES ${DSPLIBS} DESTINATION ${INSTALL_DIR}/externals/faustlibs)
 install(FILES "README.md" "LICENSE" DESTINATION "${INSTALL_DIR}")
 
 message( STATUS "DSP LIBS IS ${DSPLIBS}")
