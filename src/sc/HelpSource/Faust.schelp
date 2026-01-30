@@ -1,0 +1,144 @@
+TITLE:: Faust
+summary:: A UGen to run a Faust DSP
+categories:: UGens>Dynamic
+related:: Classes/FaustGen
+
+DESCRIPTION::
+
+Faust is a functional programming language for implementing signal process algorithms.
+In order to run Faust code on the SuperCollider server it is first necessary to register the code with a name using LINK::Classes/FaustDef::.
+After the LINK::FaustDef:: instance has been sent to the server, the code will be compiled and will become accessible via Faust.
+
+For further information and resources about the programming language, please take a look at their official website at https://faust.grame.fr/ .
+
+SUBSECTION:: Output
+
+First register Faust code on the server using
+CODE::
+FaustDef(\x, "process = 0.5;").send;
+::
+
+Afterwards this code can be used using Faust
+
+CODE::
+(
+Ndef(\x, {
+	Faust.ar(
+		numOutputs: 1,
+		script: \x,
+	).poll;
+});
+)
+
+Ndef(\x).clear;
+::
+
+It is also possible to update the code - though the synth instance has to be restarted.
+
+NOTE::
+The provided number of outputs to Faust.ar must match the number of outputs of the Faust script.
+If those values differ, Faust will return silence and a warning will be displayed.
+::
+
+SUBSECTION:: Inputs
+
+It is also possible to process input signals with Faust.ar
+
+CODE::
+FaustDef(\faustIn, "process = _ * 0.5;").send;
+::
+
+CODE::
+(
+Ndef(\faustIn, {
+	Faust.ar(
+		numOutputs: 1,
+		script: \faustIn,
+		inputs: DC.ar(1.0),
+	).poll;
+});
+)
+
+Ndef(\faustIn).clear;
+::
+
+SUBSECTION:: Parameters
+
+Parameters of Faust scripts can be passed using the params array:
+
+CODE::
+FaustDef(\faustParam, "process = hslider(\"value\",0,0,1,0.1);").send;
+::
+
+CODE::
+(
+Ndef(\faustParam, {
+	Faust.ar(
+		numOutputs: 1,
+		script: \faustParam,
+		params: [
+			value: \value.kr(0.5),
+		]
+	).poll;
+}).gui;
+)
+
+Ndef(\faustParam).clear;
+::
+
+SUBSECTION:: Libraries
+
+All default libraries of Faust are available.
+If the extensions is not installed in the default location LINK::Classes/Platform#-userExtensionDir::, it is necessary to set the path of the faust dir location using LINK::Classes/FaustDef#-libPath::.
+
+Here an example using the infamous jpverb.
+
+CODE::
+(
+~jp = FaustDef(\jp, "
+import(\"stdfaust.lib\");
+re = library(\"reverbs.lib\");
+
+t60 = hslider(\"t60\", 3.0, 0, 10.0, 0.01);
+
+process = re.jpverb(t60, 0.2, 1.0, 0.8, 0.3, 0.4, 0.9, 0.8, 0.7, 500, 10000);
+").send;
+)
+::
+
+CODE::
+(
+Ndef(\jp, {
+	var sig = SinOscFB.ar(SinOscFB.kr(0.03*[1.0, 1.01], 2.3).exprange(100, 10000), [1.3, 1.4]) * SinOscFB.kr([1.4, 1.3], 1.3);
+	sig = sig * Env.perc(releaseTime: LFDNoise3.kr(0.5).exprange(0.01, 0.5)).kr(gate: Impulse.kr(2.0, [0, 1/2]));
+	Faust.ar(
+		numOutputs: 2,
+		script: ~jp,
+		inputs: sig,
+		params: [
+			t60: \t60.kr(2.0, spec: [0.01, 10.0]
+		),
+	]) * \amp.kr(0.2);
+}).play.gui;
+)
+::
+
+
+CLASSMETHODS::
+
+METHOD:: ar
+argument:: numOutputs
+Number of output channels of the associated Faust script.
+If these values do not match, a warning will be displayed and silence will be output.
+argument:: script
+The Faust script to use.
+Can either be a LINK::Classes/String::, LINK::Classes/Symbol:: of the name of the script or an instnce of LINK::Classes/FaustDef::.
+argument:: inputs
+An array of input signals.
+argument:: params
+An array of parameters.
+First parameter needs to be a symbol or a string and the following value a valid UGen signal.
+
+INSTANCEMETHODS::
+
+PRIVATE:: init

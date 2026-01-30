@@ -102,7 +102,9 @@ endif()
 install(TARGETS sc_faust LIBRARY DESTINATION ${PROJECT_NAME})
 
 file(GLOB_RECURSE SC_FILES "${CMAKE_SOURCE_DIR}/src/sc/Classes/*.sc")
+file(GLOB_RECURSE SCHELP_FILES "${CMAKE_SOURCE_DIR}/src/sc/HelpSource/*/**")
 install(FILES ${SC_FILES} DESTINATION ${PROJECT_NAME}/Classes)
+install(DIRECTORY src/sc/HelpSource DESTINATION ${PROJECT_NAME})
 install(FILES ${DSPLIBS} DESTINATION ${PROJECT_NAME}/externals/faustlibs)
 
 message( STATUS "DSP LIBS IS ${DSPLIBS}")

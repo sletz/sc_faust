@@ -1,0 +1,107 @@
+TITLE:: FaustDef
+summary:: Stores and compiles Faust code on the server
+categories:: UGens>Dynamic
+related:: Classes/Faust, Classes/SynthDef
+
+DESCRIPTION::
+
+In order to run a LINK::Classes/Faust:: program on the server, it is first necessary to register the code on the server under a given name, similar to a LINK::Classes/SynthDef::.
+The server will then compile the script and make it available for usage by LINK::Classes/Faust:: instances.
+
+The code can be updated in a LINK::Classes/SynthDef:: like manner: Running LINK::Classes/Synth:: instances will not be modified, but new synths will pick up the latest version of the associated code.
+
+CLASSMETHODS::
+
+METHOD:: new
+Creates a new FaustDef on the client side.
+argument:: name
+A LINK::Classes/Symbol:: which acts as an identifier for the registered script.
+argument:: code
+Faust code as a string
+
+METHOD:: load
+Loads a faust file on the client side.
+argument:: name
+LINK::Classes/SynthDef::-like identifier of the registered script.
+argument:: path
+Absolute path to the file containing the Faust code.
+
+METHOD:: all
+An LINK::Classes/IdentityDictionary:: of all registered Faust instances on the client.
+
+METHOD:: libPath
+Sets the path of the Faust libraries.
+This becomes necessary when the Faust UGen is not installed in its default location.
+argument:: path
+Absolute path to the faust libraries which contains the files like CODE::stdfaust.lib::.
+argument:: server
+Falls back to LINK::Classes/Server#*default:: if not provided.
+
+METHOD:: defaultLibPath
+Path to the bundled Faust libraries of this extension.
+
+METHOD:: libPathMsg
+The server message to set the path of the faust libraries.
+See CODE::libPath:: method.
+argument:: path
+
+METHOD:: freeAll
+Frees all registered FaustDef instances from the client and server side.
+argument:: server
+Falls back to LINK::Classes/Server#*default:: if not provided.
+
+METHOD:: freeAllMsg
+The server message to remove all FaustDef instances on the server.
+See CODE::freeAll:: method.
+
+PRIVATE:: prParamPath
+PRIVATE:: prHashMap
+PRIVATE:: prHashSymbol
+PRIVATE:: initClass
+
+INSTANCEMETHODS::
+
+METHOD:: send
+Registers and compiles the associated code on the server by sending an OSC message.
+This is an async method and may take time.
+argument:: server
+Defaults to LINK::Classes/Server#*allBootedServers::.
+argument:: completionMsg
+Server command to be executed when registering and compilation is completed.
+
+METHOD:: load
+Replace the code on the client side with the content of a given file.
+argument:: path
+Absolute path to the file
+
+METHOD:: name
+A LINK::Classes/Symbol:: to identify and reference the FaustDef.
+
+METHOD:: hash
+For performance reasons, the client registers the FaustDef on the server using this hash and not the name.
+
+METHOD:: code
+Faust code registered to this instance.
+
+METHOD:: params
+An LINK::Classes/Array:: which stores the extracted parameters of the Faust script.
+Since the server is in charge of compiling the Faust script, the server also has to notify the client which parameters are present in the code.
+The parameters array will therefore be only be populated after CODE::send:: has been performed.
+
+The params array is necessary as it provides the necessary offsets for the parameters used by LINK::Classes/Faust#*ar::.
+
+NOTE::
+This should not be modified by the user since it can lead to crashes of the server.
+::
+
+METHOD:: free
+Unregisters the script from the server and from the client.
+argument:: server
+Defaults to LINK::Classes/Server#*default::.
+
+METHOD:: freeMsg
+The OSC message used by CODE::free:: to unregister the faust script from the server.
+
+PRIVATE:: prSendScript
+PRIVATE:: prTranslateParameters
+PRIVATE:: prSendFile
